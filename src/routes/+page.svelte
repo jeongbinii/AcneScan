@@ -1,4 +1,10 @@
 <script lang="ts">
+	import { enhance } from '$app/forms';
+	import { goto } from '$app/navigation';
+
+	let { data } = $props();
+	let isSaving = $state(false);
+
 	type AcneResult = {
 		type: string;
 		description: string;
@@ -49,7 +55,7 @@
 	let previewUrl: string | null = $state(null);
 	let result: AcneResult | null = $state(null);
 	let isDragging = $state(false);
-	let fileInput: HTMLInputElement;
+	let fileInput: HTMLInputElement = $state() as HTMLInputElement;
 
 	function handleFile(file: File) {
 		if (!file.type.startsWith('image/')) return;
@@ -99,13 +105,43 @@
 		중등증: 'bg-yellow-100 text-yellow-700',
 		중증: 'bg-red-100 text-red-700'
 	};
+
+	async function saveSlot() {
+		if (!data.user) {
+			goto('/login');
+			return;
+		}
+		if (!result || !previewUrl) return;
+
+		isSaving = true;
+		try {
+			const res = await fetch('/api/slots', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					imageUrl: previewUrl,
+					acneType: result.type,
+					severity: result.severity,
+					description: result.description,
+					treatments: result.treatments,
+					caution: result.caution
+				})
+			});
+
+			if (res.ok) {
+				goto('/my');
+			}
+		} finally {
+			isSaving = false;
+		}
+	}
 </script>
 
 <svelte:head>
 	<title>AcneScan — AI 여드름 분석 서비스</title>
 </svelte:head>
 
-<div class="min-h-screen bg-gradient-to-br from-rose-50 via-white to-pink-50">
+<div class="min-h-screen bg-linear-to-br from-rose-50 via-white to-pink-50">
 	<!-- Header -->
 	<header class="border-b border-rose-100 bg-white/70 backdrop-blur-sm">
 		<div class="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
@@ -113,9 +149,18 @@
 				<span class="text-2xl">🔬</span>
 				<span class="text-xl font-bold text-rose-600">AcneScan</span>
 			</div>
-			<nav class="flex gap-4 text-sm text-gray-500">
-				<a href="#how" class="hover:text-rose-500 transition-colors">이용 방법</a>
-				<a href="#features" class="hover:text-rose-500 transition-colors">기능 소개</a>
+			<nav class="flex items-center gap-4 text-sm text-gray-500">
+				<a href="/how" class="hover:text-rose-500 transition-colors">이용 방법</a>
+				<a href="/features" class="hover:text-rose-500 transition-colors">기능 소개</a>
+				{#if data.user}
+					<a href="/my" class="hover:text-rose-500 transition-colors font-medium">마이홈</a>
+					<span class="text-gray-700 font-medium">{data.user.name}님</span>
+					<form method="POST" action="/logout" use:enhance>
+						<button type="submit" class="rounded-xl bg-gray-100 px-3 py-1.5 text-gray-600 hover:bg-gray-200 transition-colors">로그아웃</button>
+					</form>
+				{:else}
+					<a href="/login" class="rounded-xl bg-rose-500 px-4 py-1.5 text-white hover:bg-rose-600 transition-colors">로그인</a>
+				{/if}
 			</nav>
 		</div>
 	</header>
@@ -257,50 +302,24 @@
 						>
 							다른 사진 분석하기
 						</button>
+
+						<!-- Save Button -->
+						<button
+							onclick={saveSlot}
+							disabled={isSaving}
+							class="mt-3 flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-rose-300 bg-white py-3 font-semibold text-rose-500 transition-colors hover:bg-rose-50 active:scale-95 disabled:opacity-50"
+						>
+							{#if isSaving}
+								저장 중...
+							{:else}
+								🗂️ 내 여드름 저장하기
+							{/if}
+						</button>
 					</div>
 				</div>
 			{/if}
 		</section>
 
-		<!-- How it works -->
-		<section id="how" class="mt-24">
-			<h2 class="mb-10 text-center text-2xl font-bold text-gray-800">이용 방법</h2>
-			<div class="grid grid-cols-1 gap-6 sm:grid-cols-3">
-				{#each [
-					{ icon: '📷', step: '01', title: '사진 업로드', desc: '여드름 부위를 촬영하거나 갤러리에서 사진을 선택하세요.' },
-					{ icon: '🤖', step: '02', title: 'AI 분석', desc: 'AI가 여드름 종류와 심각도를 즉시 분석합니다.' },
-					{ icon: '💊', step: '03', title: '해결방안 확인', desc: '약국에서 구할 수 있는 제품으로 맞춤 케어 방법을 제안해드려요.' }
-				] as item}
-					<div class="rounded-2xl bg-white p-6 shadow-sm text-center">
-						<div class="mb-3 text-4xl">{item.icon}</div>
-						<p class="mb-1 text-xs font-bold text-rose-400">STEP {item.step}</p>
-						<h3 class="mb-2 font-bold text-gray-800">{item.title}</h3>
-						<p class="text-sm text-gray-500">{item.desc}</p>
-					</div>
-				{/each}
-			</div>
-		</section>
-
-		<!-- Features -->
-		<section id="features" class="mt-20">
-			<h2 class="mb-10 text-center text-2xl font-bold text-gray-800">주요 기능</h2>
-			<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-				{#each [
-					{ icon: '🗂️', title: '여드름 슬롯 관리', desc: '여드름별로 슬롯을 만들어 치료 경과를 개별 추적할 수 있어요.' },
-					{ icon: '💬', title: 'AI 채팅 상담', desc: '전문가처럼 대화하며 경과 사진을 올리고 조언을 받아보세요.' },
-					{ icon: '🧴', title: '내 아이템 저장', desc: '보유 중인 피부 제품을 저장하면 AI가 맞춤 활용법을 제안해요.' },
-					{ icon: '📊', title: '커뮤니티 분석', desc: '다른 사용자의 치료 패턴을 분석해 효과 좋은 제품을 추천해드려요.' }
-				] as feature}
-					<div class="flex gap-4 rounded-2xl bg-white p-5 shadow-sm">
-						<span class="text-3xl">{feature.icon}</span>
-						<div>
-							<h3 class="font-bold text-gray-800">{feature.title}</h3>
-							<p class="mt-1 text-sm text-gray-500">{feature.desc}</p>
-						</div>
-					</div>
-				{/each}
-			</div>
-		</section>
 	</main>
 
 	<footer class="mt-20 border-t border-rose-100 py-8 text-center text-sm text-gray-400">
