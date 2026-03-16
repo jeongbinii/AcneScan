@@ -22,6 +22,7 @@ export const acneSlots = pgTable('acne_slots', {
 	userId: uuid('user_id')
 		.notNull()
 		.references(() => users.id, { onDelete: 'cascade' }),
+	name: varchar('name', { length: 200 }).notNull().default('새 여드름'),
 	imageUrl: text('image_url').notNull(),
 	acneType: varchar('acne_type', { length: 100 }).notNull(),
 	severity: varchar('severity', { length: 20 }).notNull(),

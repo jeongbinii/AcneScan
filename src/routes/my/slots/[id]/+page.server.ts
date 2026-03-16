@@ -24,6 +24,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 	return {
 		slot: {
 			id: slot.id,
+			name: slot.name,
 			imageUrl: slot.imageUrl,
 			acneType: slot.acneType,
 			severity: slot.severity,

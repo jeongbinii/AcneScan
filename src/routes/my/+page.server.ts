@@ -22,6 +22,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 	return {
 		slots: slots.map((slot) => ({
 			id: slot.id,
+			name: slot.name,
 			imageUrl: slot.imageUrl,
 			acneType: slot.acneType,
 			severity: slot.severity,
